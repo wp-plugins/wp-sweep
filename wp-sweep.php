@@ -3,7 +3,7 @@
 Plugin Name: WP-Sweep
 Plugin URI: http://lesterchan.net/portfolio/programming/php/
 Description: WP-Sweep allows you to clean up unused, orphaned and duplicated data in your WordPress. It cleans up revisions, auto drafts, unapproved comments, spam comments, trashed comments, orphan post meta, orphan comment meta, orphan user meta, orphan term relationships, unused terms, duplicated post meta, duplicated comment meta, duplicated user meta and transient options.
-Version: 1.0.1
+Version: 1.0.2
 Author: Lester 'GaMerZ' Chan
 Author URI: http://lesterchan.net
 Text Domain: wp-sweep
@@ -30,7 +30,7 @@ Text Domain: wp-sweep
 /**
  * WP-Sweep version
  */
-define( 'WP_SWEEP_VERSION', '1.0.1' );
+define( 'WP_SWEEP_VERSION', '1.0.2' );
 
 /**
  * Class WPSweep
@@ -239,20 +239,20 @@ class WPSweep {
 				$query = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE post_type = %s", 'revision' ) );
 				if( $query ) {
 					foreach ( $query as $id ) {
-						wp_delete_post_revision( $id );
+						wp_delete_post_revision( intval( $id ) );
 					}
 
-					$message = sprintf( __( '%d Revisions Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Revisions Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'auto_drafts':
 				$query = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE post_status = %s", 'auto-draft' ) );
 				if( $query ) {
 					foreach ( $query as $id ) {
-						wp_delete_post( $id, true );
+						wp_delete_post( intval( $id ), true );
 					}
 
-					$message = sprintf( __( '%d Auto Drafts Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Auto Drafts Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'deleted_posts':
@@ -262,37 +262,37 @@ class WPSweep {
 						wp_delete_post( $id, true );
 					}
 
-					$message = sprintf( __( '%d Deleted Posts Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Deleted Posts Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'unapproved_comments':
 				$query = $wpdb->get_col( $wpdb->prepare( "SELECT comment_ID FROM $wpdb->comments WHERE comment_approved = %s", '0' ) );
 				if( $query ) {
 					foreach ( $query as $id ) {
-						wp_delete_comment( $id, true );
+						wp_delete_comment( intval( $id ), true );
 					}
 
-					$message = sprintf( __( '%d Unapproved Comments Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Unapproved Comments Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'spam_comments':
 				$query = $wpdb->get_col( $wpdb->prepare( "SELECT comment_ID FROM $wpdb->comments WHERE comment_approved = %s", 'spam' ) );
 				if( $query ) {
 					foreach ( $query as $id ) {
-						wp_delete_comment( $id, true );
+						wp_delete_comment( intval( $id ), true );
 					}
 
-					$message = sprintf( __( '%d Spam Comments Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Spam Comments Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'deleted_comments':
 				$query = $wpdb->get_col( $wpdb->prepare( "SELECT comment_ID FROM $wpdb->comments WHERE (comment_approved = %s OR comment_approved = %s)", 'trash', 'post-trashed' ) );
 				if( $query ) {
 					foreach ( $query as $id ) {
-						wp_delete_comment( $id, true );
+						wp_delete_comment( intval( $id ), true );
 					}
 
-					$message = sprintf( __( '%d Trash Comments Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Trash Comments Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'transient_options':
@@ -306,7 +306,7 @@ class WPSweep {
 						}
 					}
 
-					$message = sprintf( __( '%d Transient Options Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Transient Options Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'orphan_postmeta':
@@ -321,7 +321,7 @@ class WPSweep {
 						}
 					}
 
-					$message = sprintf( __( '%d Orphaned Post Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Orphaned Post Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'orphan_commentmeta':
@@ -336,7 +336,7 @@ class WPSweep {
 						}
 					}
 
-					$message = sprintf( __( '%d Orphaned Comment Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Orphaned Comment Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'orphan_usermeta':
@@ -351,27 +351,27 @@ class WPSweep {
 						}
 					}
 
-					$message = sprintf( __( '%d Orphaned User Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Orphaned User Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'orphan_term_relationships':
-				$query = $wpdb->get_results( "SELECT tr.object_id, tr.term_taxonomy_id, tt.taxonomy FROM $wpdb->term_relationships AS tr INNER JOIN $wpdb->term_taxonomy AS tt ON tr.term_taxonomy_id = tt.term_taxonomy_id WHERE tt.taxonomy != 'link_category' AND tr.object_id NOT IN (SELECT ID FROM $wpdb->posts)" );
+				$query = $wpdb->get_results( "SELECT tr.object_id, tt.term_id, tt.taxonomy FROM $wpdb->term_relationships AS tr INNER JOIN $wpdb->term_taxonomy AS tt ON tr.term_taxonomy_id = tt.term_taxonomy_id WHERE tt.taxonomy != 'link_category' AND tr.object_id NOT IN (SELECT ID FROM $wpdb->posts)" );
 				if( $query ) {
 					foreach ( $query as $tax ) {
-						wp_remove_object_terms( $tax->object_id, $tax->term_taxonomy_id, $tax->taxonomy );
+						wp_remove_object_terms( intval( $tax->object_id ), intval( $tax->term_id ), $tax->taxonomy );
 					}
 
-					$message = sprintf( __( '%d Orphaned Term Relationships Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Orphaned Term Relationships Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'unused_terms':
 				$query = $wpdb->get_results( $wpdb->prepare( "SELECT t.term_id, tt.taxonomy FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.count = %d", 0 ) );
 				if( $query ) {
 					foreach ( $query as $tax ) {
-						wp_delete_term( $tax->term_id, $tax->taxonomy );
+						wp_delete_term( intval( $tax->term_id ), $tax->taxonomy );
 					}
 
-					$message = sprintf( __( '%d Unused Terms Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Unused Terms Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'duplicated_postmeta':
@@ -383,7 +383,7 @@ class WPSweep {
 						$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->postmeta WHERE meta_id IN (" . implode( ',', $ids ) . ") AND post_id = %d", intval( $meta->post_id ) ) );
 					}
 
-					$message = sprintf( __( '%d Duplicated Post Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Duplicated Post Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'duplicated_commentmeta':
@@ -395,7 +395,7 @@ class WPSweep {
 						$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->commentmeta WHERE meta_id IN (" . implode( ',', $ids ) . ") AND comment_id = %d", intval( $meta->comment_id ) ) );
 					}
 
-					$message = sprintf( __( '%d Duplicated Comment Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Duplicated Comment Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 			case 'duplicated_usermeta':
@@ -407,7 +407,7 @@ class WPSweep {
 						$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->usermeta WHERE umeta_id IN (" . implode( ',', $ids ) . ") AND user_id = %d", intval( $meta->user_id ) ) );
 					}
 
-					$message = sprintf( __( '%d Duplicated User Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+					$message = sprintf( __( '%s Duplicated User Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
 		}
