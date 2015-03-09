@@ -14,16 +14,17 @@ if( ! empty( $_GET['sweep'] ) ) {
 }
 
 ### Database Table Status
-$total_posts = WPSweep::get_instance()->table_count( 'posts' );
-$total_postmeta = WPSweep::get_instance()->table_count( 'postmeta' );
-$total_comments = WPSweep::get_instance()->table_count( 'comments' );
-$total_commentmeta = WPSweep::get_instance()->table_count( 'commentmeta' );
-$total_users = WPSweep::get_instance()->table_count( 'users' );
-$total_usermeta = WPSweep::get_instance()->table_count( 'usermeta' );
-$total_term_relationships = WPSweep::get_instance()->table_count( 'term_relationships' );
-$total_term_taxonomy = WPSweep::get_instance()->table_count( 'term_taxonomy' );
-$total_terms = WPSweep::get_instance()->table_count( 'terms' );
-$total_options = WPSweep::get_instance()->table_count( 'options' );
+$total_posts                = WPSweep::get_instance()->total_count( 'posts' );
+$total_postmeta             = WPSweep::get_instance()->total_count( 'postmeta' );
+$total_comments             = WPSweep::get_instance()->total_count( 'comments' );
+$total_commentmeta          = WPSweep::get_instance()->total_count( 'commentmeta' );
+$total_users                = WPSweep::get_instance()->total_count( 'users' );
+$total_usermeta             = WPSweep::get_instance()->total_count( 'usermeta' );
+$total_term_relationships   = WPSweep::get_instance()->total_count( 'term_relationships' );
+$total_term_taxonomy        = WPSweep::get_instance()->total_count( 'term_taxonomy' );
+$total_terms                = WPSweep::get_instance()->total_count( 'terms' );
+$total_options              = WPSweep::get_instance()->total_count( 'options' );
+$total_tables               = WPSweep::get_instance()->total_count( 'tables' );
 
 ### Count
 $revisions                  = WPSweep::get_instance()->count( 'revisions' );
@@ -46,41 +47,53 @@ $unused_terms               = WPSweep::get_instance()->count( 'unused_terms' );
 
 $transient_options          = WPSweep::get_instance()->count( 'transient_options' );
 ?>
+<style type="text/css">
+	.table-sweep thead th {
+		width: 12%;
+	}
+	.table-sweep thead th.col-sweep-details {
+		width: 56%;
+	}
+	.table-sweep thead th.col-sweep-action {
+		width: 20%;
+	}
+</style>
 <div class="wrap">
 	<h2><?php _e( 'WP-Sweep', 'wp-sweep' ); ?></h2>
-	<?php if( ! empty( $message ) ): ?>
-		<div class="updated">
-			<p><?php echo $message; ?></p>
-		</div>
-	<?php endif; ?>
 	<div class="update-nag">
 		<?php printf( __( 'Before you do any sweep, please <a href="%s" target="%s">backup your database</a> first because any sweep done is irreversible.', 'wp-sweep' ), 'https://wordpress.org/plugins/wp-dbmanager/', '_blank' ); ?>
 	</div>
+	<p>
+		<?php printf( __( 'For performance reasons, only %s items will be shown if you click Details', 'wp-sweep' ), number_format_i18n( WPSweep::get_instance()->limit_details ) ); ?>
+	</p>
 	<h3><?php _e( 'Post Sweep', 'wp-sweep' ); ?></h3>
-	<p><?php printf( __( 'There are a total of <strong class="attention">%s Posts</strong> and <strong class="attention">%s Post Meta</strong>.', 'wp-sweep' ), number_format_i18n( $total_posts ), number_format_i18n( $total_postmeta ) ); ?></p>
-	<table class="widefat">
+	<p><?php printf( __( 'There are a total of <strong class="attention"><span class="sweep-count-type-posts">%s</span> Posts</strong> and <strong class="attention"><span class="sweep-count-type-postmeta">%s</span> Post Meta</strong>.', 'wp-sweep' ), number_format_i18n( $total_posts ), number_format_i18n( $total_postmeta ) ); ?></p>
+	<div class="sweep-message"></div>
+	<table class="widefat table-sweep">
 		<thead>
 			<tr>
-				<th style="width: 64%;"><?php _e( 'Details', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( 'Count', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( '% Of', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( 'Action', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-count"><?php _e( 'Count', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-percent"><?php _e( '% Of', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-action"><?php _e( 'Action', 'wp-sweep' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
 				<td>
 					<strong><?php _e( 'Revisions', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $revisions ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $revisions ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $revisions/$total_posts ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $revisions, $total_posts ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $revisions ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=revisions', 'wp_sweep_revisions' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="revisions" data-sweep_type="posts" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_revisions' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="revisions" data-sweep_type="posts" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_revisions' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -89,16 +102,18 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			<tr class="alternate">
 				<td>
 					<strong><?php _e( 'Auto Drafts', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $auto_drafts ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $auto_drafts ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $auto_drafts/$total_posts ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $auto_drafts, $total_posts ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $auto_drafts ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=auto_drafts', 'wp_sweep_auto_drafts' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="auto_drafts" data-sweep_type="posts" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_auto_drafts' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="auto_drafts" data-sweep_type="posts" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_auto_drafts' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -107,16 +122,18 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			<tr>
 				<td>
 					<strong><?php _e( 'Deleted Posts', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $deleted_posts ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $deleted_posts ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $deleted_posts/$total_posts ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $deleted_posts, $total_posts ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $deleted_posts ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=deleted_posts', 'wp_sweep_deleted_posts' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="deleted_posts" data-sweep_type="posts" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_deleted_posts' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="deleted_posts" data-sweep_type="posts" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_deleted_posts' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -125,16 +142,18 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			<tr class="alternate">
 				<td>
 					<strong><?php _e( 'Orphaned Post Meta', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $orphan_postmeta ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $orphan_postmeta ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $orphan_postmeta/$total_postmeta ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $orphan_postmeta, $total_postmeta ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $orphan_postmeta ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=orphan_postmeta', 'wp_sweep_orphan_postmeta' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="orphan_postmeta" data-sweep_type="postmeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_orphan_postmeta' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="orphan_postmeta" data-sweep_type="postmeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_orphan_postmeta' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -143,16 +162,18 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			<tr>
 				<td>
 					<strong><?php _e( 'Duplicated Post Meta', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $duplicated_postmeta ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $duplicated_postmeta ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $duplicated_postmeta/$total_postmeta ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $duplicated_postmeta, $total_postmeta ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $duplicated_postmeta ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=duplicated_postmeta', 'wp_sweep_duplicated_postmeta' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="duplicated_postmeta" data-sweep_type="postmeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_duplicated_postmeta' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="duplicated_postmeta" data-sweep_type="postmeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_duplicated_postmeta' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -162,30 +183,33 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 	</table>
 	<p>&nbsp;</p>
 	<h3><?php _e( 'Comment Sweep', 'wp-sweep' ); ?></h3>
-	<p><?php printf( __( 'There are a total of <strong class="attention">%s Comments</strong> and <strong class="attention">%s Comment Meta</strong>.', 'wp-sweep' ), number_format_i18n( $total_comments ), number_format_i18n( $total_commentmeta ) ); ?></p>
-	<table class="widefat">
+	<p><?php printf( __( 'There are a total of <strong class="attention"><span class="sweep-count-type-comments">%s</span> Comments</strong> and <strong class="attention"><span class="sweep-count-type-commentmeta">%s</span> Comment Meta</strong>.', 'wp-sweep' ), number_format_i18n( $total_comments ), number_format_i18n( $total_commentmeta ) ); ?></p>
+	<div class="sweep-message"></div>
+	<table class="widefat table-sweep">
 		<thead>
 			<tr>
-				<th style="width: 64%;"><?php _e( 'Details', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( 'Count', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( '% Of', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( 'Action', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-count"><?php _e( 'Count', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-percent"><?php _e( '% Of', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-action"><?php _e( 'Action', 'wp-sweep' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
 				<td>
 					<strong><?php _e( 'Unapproved Comments', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $unapproved_comments ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $unapproved_comments ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $unapproved_comments/$total_comments ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $unapproved_comments, $total_comments ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $unapproved_comments ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=unapproved_comments', 'wp_sweep_unapproved_comments' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="unapproved_comments" data-sweep_type="comments" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_unapproved_comments' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="unapproved_comments" data-sweep_type="comments" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_unapproved_comments' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -194,16 +218,18 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			<tr class="alternate">
 				<td>
 					<strong><?php _e( 'Spammed Comments', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $spam_comments ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $spam_comments ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $spam_comments/$total_comments ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $spam_comments, $total_comments ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $spam_comments ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=spam_comments', 'wp_sweep_spam_comments' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="spam_comments" data-sweep_type="comments" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_spam_comments' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="spam_comments" data-sweep_type="comments" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_spam_comments' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -212,16 +238,18 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			<tr>
 				<td>
 					<strong><?php _e( 'Deleted Comments', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $deleted_comments ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $deleted_comments ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $deleted_comments/$total_comments ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $deleted_comments, $total_comments ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $deleted_comments ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=deleted_comments', 'wp_sweep_deleted_comments' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="deleted_comments" data-sweep_type="comments" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_deleted_comments' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="deleted_comments" data-sweep_type="comments" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_deleted_comments' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -230,16 +258,18 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			<tr class="alternate">
 				<td>
 					<strong><?php _e( 'Orphaned Comment Meta', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $orphan_commentmeta ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $orphan_commentmeta ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $orphan_commentmeta/$total_commentmeta ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $orphan_commentmeta, $total_commentmeta ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $orphan_commentmeta ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=orphan_commentmeta', 'wp_sweep_orphan_commentmeta' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="orphan_commentmeta" data-sweep_type="commentmeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_orphan_commentmeta' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="orphan_commentmeta" data-sweep_type="commentmeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_orphan_commentmeta' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -248,16 +278,18 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			<tr>
 				<td>
 					<strong><?php _e( 'Duplicated Comment Meta', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $duplicated_commentmeta ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $duplicated_commentmeta ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $duplicated_commentmeta/$total_commentmeta ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $duplicated_commentmeta, $total_commentmeta ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $duplicated_commentmeta ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=duplicated_commentmeta', 'wp_sweep_duplicated_commentmeta' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="duplicated_commentmeta" data-sweep_type="commentmeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_duplicated_commentmeta' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="duplicated_commentmeta" data-sweep_type="commentmeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_duplicated_commentmeta' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -267,30 +299,33 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 	</table>
 	<p>&nbsp;</p>
 	<h3><?php _e( 'User Sweep', 'wp-sweep' ); ?></h3>
-	<p><?php printf( __( 'There are a total of <strong class="attention">%s Users</strong> and <strong class="attention">%s User Meta</strong>.', 'wp-sweep' ), number_format_i18n( $total_users ), number_format_i18n( $total_usermeta ) ); ?></p>
-	<table class="widefat">
+	<p><?php printf( __( 'There are a total of <strong class="attention"><span class="sweep-count-type-users">%s</span> Users</strong> and <strong class="attention"><span class="sweep-count-type-usermeta">%s</span> User Meta</strong>.', 'wp-sweep' ), number_format_i18n( $total_users ), number_format_i18n( $total_usermeta ) ); ?></p>
+	<div class="sweep-message"></div>
+	<table class="widefat table-sweep">
 		<thead>
 			<tr>
-				<th style="width: 64%;"><?php _e( 'Details', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( 'Count', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( '% Of', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( 'Action', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-count"><?php _e( 'Count', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-percent"><?php _e( '% Of', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-action"><?php _e( 'Action', 'wp-sweep' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
 				<td>
 					<strong><?php _e( 'Orphaned User Meta', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $orphan_usermeta ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $orphan_usermeta ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $orphan_usermeta/$total_usermeta ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $orphan_usermeta, $total_usermeta ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $orphan_usermeta ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=orphan_usermeta', 'wp_sweep_orphan_usermeta' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="orphan_usermeta" data-sweep_type="usermeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_orphan_usermeta' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="orphan_usermeta" data-sweep_type="usermeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_orphan_usermeta' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -299,16 +334,18 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			<tr class="alternate">
 				<td>
 					<strong><?php _e( 'Duplicated User Meta', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $duplicated_usermeta ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $duplicated_usermeta ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $duplicated_usermeta/$total_usermeta ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $duplicated_usermeta, $total_usermeta ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $duplicated_usermeta ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=duplicated_usermeta', 'wp_sweep_duplicated_usermeta' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="duplicated_usermeta" data-sweep_type="usermeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_duplicated_usermeta' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="duplicated_usermeta" data-sweep_type="usermeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_duplicated_usermeta' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -318,30 +355,33 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 	</table>
 	<p>&nbsp;</p>
 	<h3><?php _e( 'Term Sweep', 'wp-sweep' ); ?></h3>
-	<p><?php printf( __( 'There are a total of <strong class="attention">%s Terms</strong>, <strong class="attention">%s Term Taxonomy</strong> and <strong class="attention">%s Term Relationships</strong>.', 'wp-sweep' ), number_format_i18n( $total_terms ), number_format_i18n( $total_term_taxonomy ), number_format_i18n( $total_term_relationships ) ); ?></p>
-	<table class="widefat">
+	<p><?php printf( __( 'There are a total of <strong class="attention "><span class="sweep-count-type-terms">%s</span> Terms</strong>, <strong class="attention"><span class="sweep-count-type-term_taxonomy">%s</span> Term Taxonomy</strong> and <strong class="attention"><span class="sweep-count-type-term_relationships">%s</span> Term Relationships</strong>.', 'wp-sweep' ), number_format_i18n( $total_terms ), number_format_i18n( $total_term_taxonomy ), number_format_i18n( $total_term_relationships ) ); ?></p>
+	<div class="sweep-message"></div>
+	<table class="widefat table-sweep">
 		<thead>
 			<tr>
-				<th style="width: 64%;"><?php _e( 'Details', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( 'Count', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( '% Of', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( 'Action', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-count"><?php _e( 'Count', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-percent"><?php _e( '% Of', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-action"><?php _e( 'Action', 'wp-sweep' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
 				<td>
 					<strong><?php _e( 'Orphaned Term Relationship', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $orphan_term_relationships ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $orphan_term_relationships ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $orphan_term_relationships/$total_term_relationships ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $orphan_term_relationships, $total_term_relationships ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $orphan_term_relationships ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=orphan_term_relationships', 'wp_sweep_orphan_term_relationships' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="orphan_term_relationships" data-sweep_type="term_relationships" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_orphan_term_relationships' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="orphan_term_relationships" data-sweep_type="term_relationships" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_orphan_term_relationships' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -351,16 +391,18 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 				<td>
 					<strong><?php _e( 'Unused Terms', 'wp-sweep' ); ?></strong>
 					<p><?php _e( 'Note that some unused terms might belong to draft posts that have not been published yet. Only sweep this when you do not have any draft posts.', 'wp-sweep' ); ?></p>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $unused_terms ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $unused_terms ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $unused_terms/$total_terms ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $unused_terms, $total_terms ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $unused_terms ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=unused_terms', 'wp_sweep_unused_terms' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="unused_terms" data-sweep_type="terms" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_unused_terms' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="unused_terms" data-sweep_type="terms" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_unused_terms' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -370,30 +412,33 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 	</table>
 	<p>&nbsp;</p>
 	<h3><?php _e( 'Option Sweep', 'wp-sweep' ); ?></h3>
-	<p><?php printf( __( 'There are a total of <strong class="attention">%s Options</strong>.', 'wp-sweep' ), number_format_i18n( $total_options ) ); ?></p>
-	<table class="widefat">
+	<p><?php printf( __( 'There are a total of <strong class="attention"><span class="sweep-count-type-options">%s</span> Options</strong>.', 'wp-sweep' ), number_format_i18n( $total_options ) ); ?></p>
+	<div class="sweep-message"></div>
+	<table class="widefat table-sweep">
 		<thead>
 			<tr>
-				<th style="width: 64%;"><?php _e( 'Details', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( 'Count', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( '% Of', 'wp-sweep' ); ?></th>
-				<th style="width: 12%;"><?php _e( 'Action', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-count"><?php _e( 'Count', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-percent"><?php _e( '% Of', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-action"><?php _e( 'Action', 'wp-sweep' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
 				<td>
 					<strong><?php _e( 'Transient Options', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
 				</td>
 				<td>
-					<?php echo number_format_i18n( $transient_options ); ?>
+					<span class="sweep-count"><?php echo number_format_i18n( $transient_options ); ?></span>
 				</td>
 				<td>
-					<?php echo round( ( $transient_options/$total_options ) * 100, 2 ); ?>%
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $transient_options, $total_options ); ?></span>
 				</td>
 				<td>
 					<?php if( ! empty( $transient_options ) ): ?>
-						<a href="<?php echo wp_nonce_url( $current_page . '&sweep=transient_options', 'wp_sweep_transient_options' ); ?>" class="button button-primary"><?php _e( 'Sweep', 'wp-sweep' ); ?></a>
+						<button data-action="sweep" data-sweep_name="transient_options" data-sweep_type="options" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_transient_options' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="transient_options" data-sweep_type="options" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_transient_options' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
 					<?php else: ?>
 						<?php _e( 'N/A', 'wp-sweep' ); ?>
 					<?php endif; ?>
@@ -401,4 +446,48 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			</tr>
 		</tbody>
 	</table>
+	<p>&nbsp;</p>
+	<h3><?php _e( 'Database Sweep', 'wp-sweep' ); ?></h3>
+	<p><?php printf( __( 'There are a total of <strong class="attention"><span class="sweep-count-type-tables">%s</span> Tables</strong>.', 'wp-sweep' ), number_format_i18n( $total_tables ) ); ?></p>
+	<div class="sweep-message"></div>
+	<table class="widefat table-sweep">
+		<thead>
+			<tr>
+				<th class="col-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-count"><?php _e( 'Count', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-percent"><?php _e( '% Of', 'wp-sweep' ); ?></th>
+				<th class="col-sweep-action"><?php _e( 'Action', 'wp-sweep' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>
+					<strong><?php _e( 'Optimize Tables', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
+				</td>
+				<td>
+					<span class="sweep-count"><?php echo number_format_i18n( $total_tables ); ?></span>
+				</td>
+				<td>
+					<?php _e( 'N/A', 'wp-sweep' ); ?>
+				</td>
+				<td>
+					<?php if( ! empty( $total_tables ) ): ?>
+						<button data-action="sweep" data-sweep_name="optimize_database" data-sweep_type="tables" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_optimize_database' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="optimize_database" data-sweep_type="tables" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_optimize_database' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
+					<?php else: ?>
+						<?php _e( 'N/A', 'wp-sweep' ); ?>
+					<?php endif; ?>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>&nbsp;</p>
+	<h3><?php _e( 'Sweep All', 'wp-sweep' ); ?></h3>
+	<p><?php _e( 'Note that some unused terms might belong to draft posts that have not been published yet. Only sweep all when you do not have any draft posts.', 'wp-sweep' ); ?></p>
+	<div class="sweep-all">
+		<p style="text-align: center;">
+			<button class="button button-primary btn-sweep-all"><?php _e( 'Sweep All', 'wp-sweep' ); ?></button>
+		</p>
+	</div>
 </div>

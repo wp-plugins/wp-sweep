@@ -1,14 +1,14 @@
 === WP-Sweep ===
 Contributors: GamerZ  
 Donate link: http://lesterchan.net/site/donation/  
-Tags: sweep, clean, cleanup, clean up, optimize, orphan, unused, duplicated, posts, post meta, comments, comment meta, users, user meta, terms, term relationships, revisions, auto drafts, transient  
+Tags: sweep, clean, cleanup, clean up, optimize, orphan, unused, duplicated, posts, post meta, comments, comment meta, users, user meta, terms, term relationships, revisions, auto drafts, transient, database, tables  
 Requires at least: 4.1  
 Tested up to: 4.1  
 Stable tag: trunk  
 License: GPLv2 or later  
 License URI: http://www.gnu.org/licenses/gpl-2.0.html  
 
-WP-Sweep allows you to clean up unused, orphaned and duplicated data in your WordPress.
+WP-Sweep allows you to clean up unused, orphaned and duplicated data in your WordPress. It also optimizes your database tables.
 
 == Description ==
 This plugin cleans up: 
@@ -28,6 +28,7 @@ This plugin cleans up:
 * Duplicated comment meta
 * Duplicated user meta
 * Transient options
+* Optimizes database tables
 
 This plugin uses proper WordPress delete functions as much as possible instead of running direct delete MySQL queries.
 
@@ -57,6 +58,14 @@ Following delete functions are used:
 I spent most of my free time creating, updating, maintaining and supporting these plugins, if you really love my plugins and could spare me a couple of bucks, I will really appreciate it. If not feel free to use it without any obligations.
 
 == Changelog ==
+= 1.0.3 =
+* NEW: AJAX Sweep All
+* NEW: AJAX Sweeping
+* NEW: View details of sweep
+* NEW: Optimize DB sweep
+* NEW: User hint and confirmation. Props @SiamKreative
+* FIXED: Division by zero. Pros @barisunver
+
 = 1.0.2 =
 * FIXED: Use term_id for wp_remove_object_terms()
 * FIXED: number_format_i18n() issues after sweeping

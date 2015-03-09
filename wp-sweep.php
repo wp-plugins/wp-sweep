@@ -2,8 +2,8 @@
 /*
 Plugin Name: WP-Sweep
 Plugin URI: http://lesterchan.net/portfolio/programming/php/
-Description: WP-Sweep allows you to clean up unused, orphaned and duplicated data in your WordPress. It cleans up revisions, auto drafts, unapproved comments, spam comments, trashed comments, orphan post meta, orphan comment meta, orphan user meta, orphan term relationships, unused terms, duplicated post meta, duplicated comment meta, duplicated user meta and transient options.
-Version: 1.0.2
+Description: WP-Sweep allows you to clean up unused, orphaned and duplicated data in your WordPress. It cleans up revisions, auto drafts, unapproved comments, spam comments, trashed comments, orphan post meta, orphan comment meta, orphan user meta, orphan term relationships, unused terms, duplicated post meta, duplicated comment meta, duplicated user meta and transient options. It also optimizes your database tables.
+Version: 1.0.3
 Author: Lester 'GaMerZ' Chan
 Author URI: http://lesterchan.net
 Text Domain: wp-sweep
@@ -29,23 +29,43 @@ Text Domain: wp-sweep
 
 /**
  * WP-Sweep version
+ *
+ * @since 1.0.0
  */
-define( 'WP_SWEEP_VERSION', '1.0.2' );
+define( 'WP_SWEEP_VERSION', '1.0.3' );
 
 /**
- * Class WPSweep
+ * WP-Sweep class
+ *
+ * @since 1.0.0
  */
 class WPSweep {
 	/**
-	 * Variables
+	 * Limit the number of items to show for sweep details
+	 *
+	 * @since 1.0.3
+	 *
+	 * @access public
+	 * @var int
+	 */
+	public $limit_details = 500;
+
+	/**
+	 * Static instance
+	 *
+	 * @since 1.0.0
+	 *
+	 * @access private
+	 * @var instance
 	 */
 	private static $instance;
 
 	/**
 	 * Constructor method
 	 *
+	 * @since 1.0.0
+	 *
 	 * @access public
-	 * @return void
 	 */
 	public function __construct() {
 		// Add Plugin Hooks
@@ -62,8 +82,10 @@ class WPSweep {
 	/**
 	 * Initializes the plugin object and returns its instance
 	 *
+	 * @since 1.0.0
+	 *
 	 * @access public
-	 * @return object the plugin object instance
+	 * @return object The plugin object instance
 	 */
 	public static function get_instance() {
 		if ( ! isset( self::$instance ) ) {
@@ -75,6 +97,8 @@ class WPSweep {
 	/**
 	 * Init this plugin
 	 *
+	 * @since 1.0.0
+	 *
 	 * @access public
 	 * @return void
 	 */
@@ -83,6 +107,8 @@ class WPSweep {
 	/**
 	 * Adds all the plugin hooks
 	 *
+	 * @since 1.0.0
+	 *
 	 * @access public
 	 * @return void
 	 */
@@ -90,11 +116,45 @@ class WPSweep {
 		// Actions
 		add_action( 'init', array( $this, 'init' ) );
 		add_action( 'admin_menu', array( $this, 'admin_menu' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts') );
+		add_action( 'wp_ajax_sweep_details', array( $this, 'ajax_sweep_details' ) );
+		add_action( 'wp_ajax_sweep', array( $this, 'ajax_sweep' ) );
+	}
+
+	/**
+	 * Enqueue JS/CSS files used for admin
+	 *
+	 * @since 1.0.3
+	 * 
+	 * @access public
+	 * @param string $hook
+	 * @return void
+	 */
+	public function admin_enqueue_scripts( $hook ) {
+		if( 'wp-sweep/admin.php' !== $hook ) {
+			return;
+		}
+
+		if( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			wp_enqueue_script( 'wp-sweep', plugins_url( 'wp-sweep/js/wp-sweep.js' ), array( 'jquery' ) , WP_SWEEP_VERSION, true );
+		} else {
+			wp_enqueue_script( 'wp-sweep', plugins_url( 'wp-sweep/js/wp-sweep.min.js' ), array( 'jquery' ) , WP_SWEEP_VERSION, true );
+		}
+
+		wp_localize_script( 'wp-sweep', 'wp_sweep', array(
+			'text_close_warning'    => __( 'Sweeping is in progress. If you leave now the process won\'t be completed.', 'wp-sweep' ),
+			'text_sweep'            => __( 'Sweep', 'wp-sweep' ),
+			'text_sweep_all'        => __( 'Sweep All', 'wp-sweep' ),
+			'text_sweeping'         => __( 'Sweeping ...', 'wp-sweep' ),
+			'text_na'               => __( 'N/A', 'wp-sweep' )
+		) );
 	}
 
 	/**
 	 * Admin menu
 	 *
+	 * @since 1.0.3
+	 * 
 	 * @access public
 	 * @return void
 	 */
@@ -102,14 +162,95 @@ class WPSweep {
 		add_management_page( __( 'Sweep', 'wp-sweep' ), __( 'Sweep', 'wp-sweep' ), 'activate_plugins', 'wp-sweep/admin.php' );
 	}
 
+
 	/**
-	 * Count the number of items belonging to each table
+	 * Sweep Details loaded via AJAX
+	 *
+	 * @since 1.0.3
 	 *
 	 * @access public
-	 * @param string Table name
-	 * @return integer Number of items belonging to each table
+	 * @return void
 	 */
-	public function table_count( $name ) {
+	public function ajax_sweep_details() {
+		if( ! empty( $_GET['action'] ) && $_GET['action'] === 'sweep_details' && ! empty( $_GET['sweep_name'] ) && ! empty( $_GET['sweep_type'] ) ) {
+			// Verify Referer
+			if ( ! check_admin_referer( 'wp_sweep_details_' . $_GET['sweep_name'] ) ) {
+				wp_send_json_error( array(
+					'error'    => __( 'Failed to verify referrer.', 'wp-sweep' )
+				) );
+			} else {
+				wp_send_json_success( $this->details( $_GET['sweep_name'] ) );
+			}
+		}
+	}
+
+	/**
+	 * Sweep via AJAX
+	 *
+	 * @since 1.0.3
+	 *
+	 * @access public
+	 * @return void
+	 */
+	public function ajax_sweep() {
+		if( ! empty( $_GET['action'] ) && $_GET['action'] === 'sweep' && ! empty( $_GET['sweep_name'] ) && ! empty( $_GET['sweep_type'] ) ) {
+			// Verify Referer
+			if ( ! check_admin_referer( 'wp_sweep_' . $_GET['sweep_name'] ) ) {
+				wp_send_json_error( array(
+					'error'    => __( 'Failed to verify referrer.', 'wp-sweep' )
+				) );
+			} else {
+				$sweep = $this->sweep( $_GET['sweep_name'] );
+				$count = $this->count( $_GET['sweep_name'] );
+				$total_count = $this->total_count( $_GET['sweep_type'] );
+				$total_stats = array();
+				switch( $_GET['sweep_type'] ) {
+					case 'posts':
+					case 'postmeta':
+						$total_stats = array( 'posts' => $this->total_count( 'posts' ), 'postmeta' => $this->total_count( 'postmeta') );
+						break;
+					case 'comments':
+					case 'commentmeta':
+						$total_stats = array( 'comments' => $this->total_count( 'comments' ), 'commentmeta' => $this->total_count( 'commentmeta') );
+						break;
+					case 'users':
+					case 'usermeta':
+						$total_stats = array( 'users' => $this->total_count( 'users' ), 'usermeta' => $this->total_count( 'usermeta') );
+						break;
+					case 'term_relationships':
+					case 'term_taxonomy':
+					case 'terms':
+						$total_stats = array( 'term_relationships' => $this->total_count( 'term_relationships' ), 'term_taxonomy' => $this->total_count( 'term_taxonomy'), 'terms' => $this->total_count( 'terms') );
+						break;
+					case 'options':
+						$total_stats = array( 'options' => $this->total_count( 'options' ) );
+						break;
+					case 'tables':
+						$total_stats = array( 'tables' => $this->total_count( 'tables' ) );
+						break;
+				}
+
+				wp_send_json_success( array(
+					'sweep' => $sweep,
+					'count' => $count,
+					'total' => $total_count,
+					'percentage' => $this->format_percentage( $count, $total_count ),
+					'stats' => $total_stats
+				) );
+			}
+		}
+	}
+
+	/**
+	 * Count the number of total items belonging to each sweep
+	 *
+	 * @since 1.0.0
+	 *
+	 * @access public
+	 * @param string $name
+	 * @return int Number of items belonging to each sweep
+	 */
+	public function total_count( $name ) {
 		global $wpdb;
 
 		$count = 0;
@@ -145,24 +286,29 @@ class WPSweep {
 			case 'options':
 				$count = $wpdb->get_var( "SELECT COUNT(*) FROM $wpdb->options" );
 				break;
+			case 'tables':
+				$count = sizeof( $wpdb->get_col( 'SHOW TABLES' ) );
+				break;
 		}
 
 		return $count;
 	}
 
 	/**
-	 * Count the number of items belonging to each sweep type
+	 * Count the number of items belonging to each sweep
+	 *
+	 * @since 1.0.0
 	 *
 	 * @access public
-	 * @param string Sweep type
-	 * @return integer Number of items belonging to each sweep type
+	 * @param string $name
+	 * @return int Number of items belonging to each sweep
 	 */
-	public function count( $type ) {
+	public function count( $name ) {
 		global $wpdb;
 
 		$count = 0;
 
-		switch( $type ) {
+		switch( $name ) {
 			case 'revisions':
 				$count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(ID) FROM $wpdb->posts WHERE post_type = %s", 'revision' ) );
 				break;
@@ -197,7 +343,7 @@ class WPSweep {
 				$count = $wpdb->get_var( "SELECT COUNT(object_id) FROM $wpdb->term_relationships AS tr INNER JOIN $wpdb->term_taxonomy AS tt ON tr.term_taxonomy_id = tt.term_taxonomy_id WHERE tt.taxonomy != 'link_category' AND tr.object_id NOT IN (SELECT ID FROM $wpdb->posts)" );
 				break;
 			case 'unused_terms':
-				$count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(t.term_id) FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.count = %d", 0 ) );
+				$count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(t.term_id) FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.count = %d AND t.term_id NOT IN (" . implode( ',', $this->get_excluded_termids() ) . ")", 0 ) );
 				break;
 			case 'duplicated_postmeta':
 				$query = $wpdb->get_col( $wpdb->prepare( "SELECT COUNT(meta_id) AS count FROM $wpdb->postmeta GROUP BY post_id, meta_key, meta_value HAVING count > %d", 1 ) );
@@ -217,24 +363,115 @@ class WPSweep {
 					$count = array_sum( array_map( 'intval', $query ) );
 				}
 				break;
+			case 'optimize_database':
+				$count = sizeof( $wpdb->get_col( 'SHOW TABLES' ) );
+				break;
 		}
 
 		return $count;
 	}
 
 	/**
-	 * Does the sweeping/cleaning up
+	 * Return more details about a sweep
+	 *
+	 * @since 1.0.3
 	 *
 	 * @access public
-	 * @param string Sweep type
+	 * @param string $name
+	 * @return int Number of items belonging to each sweep
+	 */
+	public function details( $name ) {
+		global $wpdb;
+
+		$details = array();
+
+		switch( $name ) {
+			case 'revisions':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT post_title FROM $wpdb->posts WHERE post_type = %s LIMIT %d", 'revision', $this->limit_details ) );
+				break;
+			case 'auto_drafts':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT post_title FROM $wpdb->posts WHERE post_status = %s LIMIT %d", 'auto-draft', $this->limit_details ) );
+				break;
+			case 'deleted_posts':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT post_title FROM $wpdb->posts WHERE post_status = %s LIMIT %d", 'trash', $this->limit_details ) );
+				break;
+			case 'unapproved_comments':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT comment_author FROM $wpdb->comments WHERE comment_approved = %s LIMIT %d", '0', $this->limit_details ) );
+				break;
+			case 'spam_comments':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT comment_author FROM $wpdb->comments WHERE comment_approved = %s LIMIT %d", 'spam', $this->limit_details ) );
+				break;
+			case 'deleted_comments':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT comment_author FROM $wpdb->comments WHERE (comment_approved = %s OR comment_approved = %s) LIMIT %d", 'trash', 'post-trashed', $this->limit_details ) );
+				break;
+			case 'transient_options':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT option_name FROM $wpdb->options WHERE option_name LIKE(%s) LIMIT %d", '%_transient_%', $this->limit_details ) );
+				break;
+			case 'orphan_postmeta':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT meta_key FROM $wpdb->postmeta WHERE post_id NOT IN (SELECT ID FROM $wpdb->posts) LIMIT %d", $this->limit_details ) );
+				break;
+			case 'orphan_commentmeta':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT meta_key FROM $wpdb->commentmeta WHERE comment_id NOT IN (SELECT comment_ID FROM $wpdb->comments) LIMIT %d", $this->limit_details ) );
+				break;
+			case 'orphan_usermeta':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT meta_key FROM $wpdb->usermeta WHERE user_id NOT IN (SELECT ID FROM $wpdb->users) LIMIT %d", $this->limit_details ) );
+				break;
+			case 'orphan_term_relationships':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT tt.taxonomy FROM $wpdb->term_relationships AS tr INNER JOIN $wpdb->term_taxonomy AS tt ON tr.term_taxonomy_id = tt.term_taxonomy_id WHERE tt.taxonomy != 'link_category' AND tr.object_id NOT IN (SELECT ID FROM $wpdb->posts) LIMIT %d", $this->limit_details ) );
+				break;
+			case 'unused_terms':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT t.name FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.count = %d AND t.term_id NOT IN (" . implode( ',', $this->get_excluded_termids() ) . ") LIMIT %d", 0, $this->limit_details ) );
+				break;
+			case 'duplicated_postmeta':
+				$query = $wpdb->get_results( $wpdb->prepare( "SELECT COUNT(meta_id) AS count, meta_key FROM $wpdb->postmeta GROUP BY post_id, meta_key, meta_value HAVING count > %d LIMIT %d", 1, $this->limit_details ) );
+				$details = array();
+				if( $query ) {
+					foreach( $query as $meta ) {
+						$details[] = $meta->meta_key;
+					}
+				}
+				break;
+			case 'duplicated_commentmeta':
+				$query = $wpdb->get_results( $wpdb->prepare( "SELECT COUNT(meta_id) AS count, meta_key FROM $wpdb->commentmeta GROUP BY comment_id, meta_key, meta_value HAVING count > %d LIMIT %d", 1, $this->limit_details ) );
+				$details = array();
+				if( $query ) {
+					foreach( $query as $meta ) {
+						$details[] = $meta->meta_key;
+					}
+				}
+				break;
+			case 'duplicated_usermeta':
+				$query = $wpdb->get_results( $wpdb->prepare( "SELECT COUNT(umeta_id) AS count, meta_key FROM $wpdb->usermeta GROUP BY user_id, meta_key, meta_value HAVING count > %d LIMIT %d", 1, $this->limit_details ) );
+				$details = array();
+				if( $query ) {
+					foreach( $query as $meta ) {
+						$details[] = $meta->meta_key;
+					}
+				}
+				break;
+			case 'optimize_database':
+				$details = $wpdb->get_col( 'SHOW TABLES' );
+				break;
+		}
+
+		return $details;
+	}
+
+	/**
+	 * Does the sweeping/cleaning up
+	 *
+	 * @since 1.0.0
+	 *
+	 * @access public
+	 * @param string $name
 	 * @return string Processed message
 	 */
-	public function sweep( $type ) {
+	public function sweep( $name ) {
 		global $wpdb;
 
 		$message = '';
 
-		switch( $type ) {
+		switch( $name ) {
 			case 'revisions':
 				$query = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE post_type = %s", 'revision' ) );
 				if( $query ) {
@@ -365,10 +602,20 @@ class WPSweep {
 				}
 				break;
 			case 'unused_terms':
-				$query = $wpdb->get_results( $wpdb->prepare( "SELECT t.term_id, tt.taxonomy FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.count = %d", 0 ) );
+				$query = $wpdb->get_results( $wpdb->prepare( "SELECT tt.term_taxonomy_id, t.term_id, tt.taxonomy FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.count = %d AND t.term_id NOT IN (" . implode( ',', $this->get_excluded_termids() ) . ")", 0 ) );
 				if( $query ) {
+					$check_wp_terms = false;
 					foreach ( $query as $tax ) {
-						wp_delete_term( intval( $tax->term_id ), $tax->taxonomy );
+						if( taxonomy_exists( $tax->taxonomy ) ) {
+							wp_delete_term( intval( $tax->term_id ), $tax->taxonomy );
+						} else {
+							$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->term_taxonomy WHERE term_taxonomy_id = %d", intval( $tax->term_taxonomy_id ) ) );
+							$check_wp_terms = true;
+						}
+					}
+					// We need this for invalid taxonomies
+					if( $check_wp_terms ) {
+						$wpdb->get_results( "DELETE FROM $wpdb->terms WHERE term_id NOT IN (SELECT term_id FROM $wpdb->term_taxonomy)" );
 					}
 
 					$message = sprintf( __( '%s Unused Terms Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
@@ -410,16 +657,99 @@ class WPSweep {
 					$message = sprintf( __( '%s Duplicated User Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
+			case 'optimize_database':
+				$query = $wpdb->get_col( 'SHOW TABLES' );
+				if( $query ) {
+					$tables = implode( ',', $query );
+					$wpdb->query( "OPTIMIZE TABLE $tables" );
+					$message = sprintf( __( '%s Tables Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+				}
+				break;
 		}
 
 		return $message;
 	}
 
 	/**
-	 * What to do when the plugin is being deactivated
+	 * Format number to percentage, taking care of division by 0.
+	 * Props @barisunver https://github.com/barisunver
+	 *
+	 * @since 1.0.2
 	 *
 	 * @access public
-	 * @param boolean Is the plugin being network activated?
+	 * @param int $current
+	 * @param int $total
+	 * @return string Number in percentage
+	 */
+	public function format_percentage( $current, $total ) {
+		return ( $total > 0 ? round( ( $current / $total ) * 100, 2 ) : 0 ) . '%';
+	}
+
+	/*
+	 * Get excluded term IDs
+	 *
+	 * @since 1.0.3
+	 *
+	 * @access private
+	 * @return array Excluded term IDs
+	 */
+	private function get_excluded_termids() {
+		$default_term_ids = $this->get_default_taxonomy_termids();
+		if( ! is_array( $default_term_ids ) ) {
+			$default_term_ids = array();
+		}
+		$parent_term_ids = $this->get_parent_termids();
+		if( ! is_array( $parent_term_ids ) ) {
+			$parent_term_ids = array();
+		}
+		return array_merge( $default_term_ids, $parent_term_ids );
+	}
+
+	/*
+	 * Get all default taxonomy term IDs
+	 *
+	 * @since 1.0.3
+	 *
+	 * @access private
+	 * @return array Default taxonomy term IDs
+	 */
+	private function get_default_taxonomy_termids() {
+		$taxonomies = get_taxonomies();
+		$default_term_ids = array();
+		if( $taxonomies ) {
+			$tax = array_keys( $taxonomies );
+			if( $tax ) {
+				foreach( $tax as $t ) {
+					$term_id = intval( get_option( 'default_' . $t ) );
+					if( $term_id > 0 ) {
+						$default_term_ids[] = $term_id;
+					}
+				}
+			}
+		}
+		return $default_term_ids;
+	}
+
+	/*
+	 * Get terms that has a parent term
+	 *
+	 * @since 1.0.3
+	 *
+	 * @access private
+	 * @return array Parent term IDs
+	 */
+	private function get_parent_termids() {
+		global $wpdb;
+		return $wpdb->get_col( $wpdb->prepare( "SELECT tt.parent FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.parent > %d", 0 ) );
+	}
+
+	/**
+	 * What to do when the plugin is being deactivated
+	 *
+	 * @since 1.0.0
+	 *
+	 * @access public
+	 * @param boolean $network_wide
 	 * @return void
 	 */
 	public function plugin_activation( $network_wide ) {
@@ -442,6 +772,8 @@ class WPSweep {
 	/**
 	 * Perform plugin activation tasks
 	 *
+	 * @since 1.0.0
+	 *
 	 * @access private
 	 * @return void
 	 */
@@ -450,8 +782,10 @@ class WPSweep {
 	/**
 	 * What to do when the plugin is being activated
 	 *
+	 * @since 1.0.0
+	 *
 	 * @access public
-	 * @param boolean Is the plugin being network activated?
+	 * @param boolean $network_wide
 	 * @return void
 	 */
 	public function plugin_deactivation( $network_wide ) {
@@ -474,6 +808,8 @@ class WPSweep {
 	/**
 	 * Perform plugin deactivation tasks
 	 *
+	 * @since 1.0.0
+	 *
 	 * @access private
 	 * @return void
 	 */
@@ -482,6 +818,5 @@ class WPSweep {
 
 /**
  * Init WP-Sweep
- *
  */
 WPSweep::get_instance();
