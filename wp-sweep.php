@@ -3,19 +3,19 @@
 Plugin Name: WP-Sweep
 Plugin URI: http://lesterchan.net/portfolio/programming/php/
 Description: WP-Sweep allows you to clean up unused, orphaned and duplicated data in your WordPress. It cleans up revisions, auto drafts, unapproved comments, spam comments, trashed comments, orphan post meta, orphan comment meta, orphan user meta, orphan term relationships, unused terms, duplicated post meta, duplicated comment meta, duplicated user meta and transient options. It also optimizes your database tables.
-Version: 1.0.3
+Version: 1.0.4
 Author: Lester 'GaMerZ' Chan
 Author URI: http://lesterchan.net
 Text Domain: wp-sweep
+Domain Path: /languages/
+License: GPL2
 */
 
-/*
-    Copyright 2015  Lester Chan  (email : lesterchan@gmail.com)
+/*  Copyright 2015  Lester Chan  (email : lesterchan@gmail.com)
 
     This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+    it under the terms of the GNU General Public License, version 2, as
+    published by the Free Software Foundation.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,7 +24,7 @@ Text Domain: wp-sweep
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 /**
@@ -32,7 +32,7 @@ Text Domain: wp-sweep
  *
  * @since 1.0.0
  */
-define( 'WP_SWEEP_VERSION', '1.0.3' );
+define( 'WP_SWEEP_VERSION', '1.0.4' );
 
 /**
  * WP-Sweep class
@@ -291,6 +291,8 @@ class WPSweep {
 				break;
 		}
 
+		$count = apply_filters( 'wp_sweep_total_count', $name, $count );
+
 		return $count;
 	}
 
@@ -366,7 +368,12 @@ class WPSweep {
 			case 'optimize_database':
 				$count = sizeof( $wpdb->get_col( 'SHOW TABLES' ) );
 				break;
+			case 'oembed_postmeta':
+				$count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(meta_id) FROM $wpdb->postmeta WHERE meta_key LIKE(%s)", '%_oembed_%' ) );
+				break;
 		}
+
+		$count = apply_filters( 'wp_sweep_count', $name, $count );
 
 		return $count;
 	}
@@ -452,7 +459,12 @@ class WPSweep {
 			case 'optimize_database':
 				$details = $wpdb->get_col( 'SHOW TABLES' );
 				break;
+			case 'oembed_postmeta':
+				$details = $wpdb->get_col( $wpdb->prepare( "SELECT meta_key FROM $wpdb->postmeta WHERE meta_key LIKE(%s) LIMIT %d", '%_oembed_%', $this->limit_details ) );
+				break;
 		}
+
+		$details = apply_filters( 'wp_sweep_details', $name, $details );
 
 		return $details;
 	}
@@ -665,7 +677,24 @@ class WPSweep {
 					$message = sprintf( __( '%s Tables Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
 				}
 				break;
+			case 'oembed_postmeta':
+				$query = $wpdb->get_results( $wpdb->prepare( "SELECT post_id, meta_key FROM $wpdb->postmeta WHERE meta_key LIKE(%s)", '%_oembed_%' ) );
+				if( $query ) {
+					foreach ( $query as $meta ) {
+						$post_id = intval( $meta->post_id );
+						if( $post_id === 0 ) {
+							$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s", $post_id, $meta->meta_key ) );
+						} else {
+							delete_post_meta( $post_id, $meta->meta_key );
+						}
+					}
+
+					$message = sprintf( __( '%s oEmbed Caches In Post Meta Processed', 'wp-sweep' ), number_format_i18n( sizeof( $query ) ) );
+				}
+				break;
 		}
+
+		$message = apply_filters( 'wp_sweep_sweep', $name, $message );
 
 		return $message;
 	}

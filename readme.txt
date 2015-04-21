@@ -1,9 +1,9 @@
 === WP-Sweep ===
 Contributors: GamerZ  
 Donate link: http://lesterchan.net/site/donation/  
-Tags: sweep, clean, cleanup, clean up, optimize, orphan, unused, duplicated, posts, post meta, comments, comment meta, users, user meta, terms, term relationships, revisions, auto drafts, transient, database, tables  
+Tags: sweep, clean, cleanup, clean up, optimize, orphan, unused, duplicated, posts, post meta, comments, comment meta, users, user meta, terms, term relationships, revisions, auto drafts, transient, database, tables, oembed
 Requires at least: 4.1  
-Tested up to: 4.1  
+Tested up to: 4.2  
 Stable tag: trunk  
 License: GPLv2 or later  
 License URI: http://www.gnu.org/licenses/gpl-2.0.html  
@@ -29,6 +29,7 @@ This plugin cleans up:
 * Duplicated user meta
 * Transient options
 * Optimizes database tables
+* oEmbed caches in post meta
 
 This plugin uses proper WordPress delete functions as much as possible instead of running direct delete MySQL queries.
 
@@ -58,6 +59,10 @@ Following delete functions are used:
 I spent most of my free time creating, updating, maintaining and supporting these plugins, if you really love my plugins and could spare me a couple of bucks, I will really appreciate it. If not feel free to use it without any obligations.
 
 == Changelog ==
+= 1.0.4 =
+* NEW: oEmbed caches in post meta Sweep
+* NEW: Add POT file for translators
+
 = 1.0.3 =
 * NEW: AJAX Sweep All
 * NEW: AJAX Sweeping

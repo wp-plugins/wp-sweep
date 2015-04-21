@@ -32,6 +32,7 @@ $auto_drafts                = WPSweep::get_instance()->count( 'auto_drafts' );
 $deleted_posts              = WPSweep::get_instance()->count( 'deleted_posts' );
 $orphan_postmeta            = WPSweep::get_instance()->count( 'orphan_postmeta' );
 $duplicated_postmeta        = WPSweep::get_instance()->count( 'duplicated_postmeta' );
+$oembed_postmeta            = WPSweep::get_instance()->count( 'oembed_postmeta' );
 
 $unapproved_comments        = WPSweep::get_instance()->count( 'unapproved_comments' );
 $spam_comments              = WPSweep::get_instance()->count( 'spam_comments' );
@@ -179,8 +180,29 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 					<?php endif; ?>
 				</td>
 			</tr>
+			<tr class="alternate">
+				<td>
+					<strong><?php _e( 'oEmbed Caches In Post Meta', 'wp-sweep' ); ?></strong>
+					<p class="sweep-details" style="display: none;"></p>
+				</td>
+				<td>
+					<span class="sweep-count"><?php echo number_format_i18n( $oembed_postmeta ); ?></span>
+				</td>
+				<td>
+					<span class="sweep-percentage"><?php echo WPSweep::get_instance()->format_percentage( $oembed_postmeta, $total_postmeta ); ?></span>
+				</td>
+				<td>
+					<?php if( ! empty( $oembed_postmeta ) ): ?>
+						<button data-action="sweep" data-sweep_name="oembed_postmeta" data-sweep_type="postmeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_oembed_postmeta' ); ?>" class="button button-primary btn-sweep"><?php _e( 'Sweep', 'wp-sweep' ); ?></button>
+						<button data-action="sweep_details" data-sweep_name="oembed_postmeta" data-sweep_type="postmeta" data-nonce="<?php echo wp_create_nonce( 'wp_sweep_details_oembed_postmeta' ); ?>" class="button btn-sweep-details"><?php _e( 'Details', 'wp-sweep' ); ?></button>
+					<?php else: ?>
+						<?php _e( 'N/A', 'wp-sweep' ); ?>
+					<?php endif; ?>
+				</td>
+			</tr>
 		</tbody>
 	</table>
+	<?php do_action( 'wp_sweep_admin_post_sweep' ); ?>
 	<p>&nbsp;</p>
 	<h3><?php _e( 'Comment Sweep', 'wp-sweep' ); ?></h3>
 	<p><?php printf( __( 'There are a total of <strong class="attention"><span class="sweep-count-type-comments">%s</span> Comments</strong> and <strong class="attention"><span class="sweep-count-type-commentmeta">%s</span> Comment Meta</strong>.', 'wp-sweep' ), number_format_i18n( $total_comments ), number_format_i18n( $total_commentmeta ) ); ?></p>
@@ -297,6 +319,7 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			</tr>
 		</tbody>
 	</table>
+	<?php do_action( 'wp_sweep_admin_comment_sweep' ); ?>
 	<p>&nbsp;</p>
 	<h3><?php _e( 'User Sweep', 'wp-sweep' ); ?></h3>
 	<p><?php printf( __( 'There are a total of <strong class="attention"><span class="sweep-count-type-users">%s</span> Users</strong> and <strong class="attention"><span class="sweep-count-type-usermeta">%s</span> User Meta</strong>.', 'wp-sweep' ), number_format_i18n( $total_users ), number_format_i18n( $total_usermeta ) ); ?></p>
@@ -353,6 +376,7 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			</tr>
 		</tbody>
 	</table>
+	<?php do_action( 'wp_sweep_admin_user_sweep' ); ?>
 	<p>&nbsp;</p>
 	<h3><?php _e( 'Term Sweep', 'wp-sweep' ); ?></h3>
 	<p><?php printf( __( 'There are a total of <strong class="attention "><span class="sweep-count-type-terms">%s</span> Terms</strong>, <strong class="attention"><span class="sweep-count-type-term_taxonomy">%s</span> Term Taxonomy</strong> and <strong class="attention"><span class="sweep-count-type-term_relationships">%s</span> Term Relationships</strong>.', 'wp-sweep' ), number_format_i18n( $total_terms ), number_format_i18n( $total_term_taxonomy ), number_format_i18n( $total_term_relationships ) ); ?></p>
@@ -410,6 +434,7 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			</tr>
 		</tbody>
 	</table>
+	<?php do_action( 'wp_sweep_admin_term_sweep' ); ?>
 	<p>&nbsp;</p>
 	<h3><?php _e( 'Option Sweep', 'wp-sweep' ); ?></h3>
 	<p><?php printf( __( 'There are a total of <strong class="attention"><span class="sweep-count-type-options">%s</span> Options</strong>.', 'wp-sweep' ), number_format_i18n( $total_options ) ); ?></p>
@@ -446,6 +471,7 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			</tr>
 		</tbody>
 	</table>
+	<?php do_action( 'wp_sweep_admin_option_sweep' ); ?>
 	<p>&nbsp;</p>
 	<h3><?php _e( 'Database Sweep', 'wp-sweep' ); ?></h3>
 	<p><?php printf( __( 'There are a total of <strong class="attention"><span class="sweep-count-type-tables">%s</span> Tables</strong>.', 'wp-sweep' ), number_format_i18n( $total_tables ) ); ?></p>
@@ -482,6 +508,7 @@ $transient_options          = WPSweep::get_instance()->count( 'transient_options
 			</tr>
 		</tbody>
 	</table>
+	<?php do_action( 'wp_sweep_admin_database_sweep' ); ?>
 	<p>&nbsp;</p>
 	<h3><?php _e( 'Sweep All', 'wp-sweep' ); ?></h3>
 	<p><?php _e( 'Note that some unused terms might belong to draft posts that have not been published yet. Only sweep all when you do not have any draft posts.', 'wp-sweep' ); ?></p>
